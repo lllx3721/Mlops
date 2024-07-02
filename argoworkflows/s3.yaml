@@ -1,0 +1,98 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: s3-data-processing-
+spec:
+  entrypoint: main
+  serviceAccountName: argo-workflows-sa  # 确保这个服务账户具有访问 S3 的权限
+  templates:
+    - name: main
+      steps:
+        - - name: fetch-data
+            template: fetch-data
+        - - name: process-data
+            template: process-data
+            arguments:
+              artifacts:
+                - name: input-data
+                  from: "{{steps.fetch-data.outputs.artifacts.input-data}}"
+        - - name: store-data
+            template: store-data
+            arguments:
+              artifacts:
+                - name: output-data
+                  from: "{{steps.process-data.outputs.artifacts.output-data}}"
+
+    - name: fetch-data
+      inputs: []
+      outputs:
+        artifacts:
+          - name: input-data
+            path: /tmp/input-file.txt
+            s3:
+              endpoint: s3.amazonaws.com
+              bucket: your-bucket
+              key: input-data/input-file.txt
+              accessKeySecret:
+                name: my-s3-credentials
+                key: accessKey
+              secretKeySecret:
+                name: my-s3-credentials
+                key: secretKey
+      script:
+        image: amazon/aws-cli:latest
+        command: [sh]
+        source: |
+          echo "Fetching data from S3..."
+          aws s3 cp s3://your-bucket/input-data/input-file.txt /tmp/input-file.txt
+
+    - name: process-data
+      inputs:
+        artifacts:
+          - name: input-data
+            path: /tmp/input-file.txt
+      outputs:
+        artifacts:
+          - name: output-data
+            path: /tmp/output-file.txt
+      script:
+        image: python:3.8
+        command: [python]
+        source: |
+          import os
+
+          input_path = "/tmp/input-file.txt"
+          output_path = "/tmp/output-file.txt"
+
+          with open(input_path, 'r') as input_file:
+              data = input_file.read()
+
+          # Process the data (example: convert to uppercase)
+          processed_data = data.upper()
+
+          with open(output_path, 'w') as output_file:
+              output_file.write(processed_data)
+
+          print("Data processed and saved to", output_path)
+
+    - name: store-data
+      inputs:
+        artifacts:
+          - name: output-data
+            path: /tmp/output-file.txt
+            s3:
+              endpoint: s3.amazonaws.com
+              bucket: your-bucket
+              key: output-data/output-file.txt
+              accessKeySecret:
+                name: my-s3-credentials
+                key: accessKey
+              secretKeySecret:
+                name: my-s3-credentials
+                key: secretKey
+      script:
+        image: amazon/aws-cli:latest
+        command: [sh]
+        source: |
+          echo "Storing data to S3..."
+          aws s3 cp /tmp/output-file.txt s3://your-bucket/output-data/output-file.txt
