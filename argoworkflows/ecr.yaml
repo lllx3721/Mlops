@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: ecr-example-
+spec:
+  entrypoint: main
+  serviceAccountName: argo-workflows-sa  # 确保这个服务账户具有访问 ECR 的权限
+  templates:
+    - name: main
+      steps:
+        - - name: fetch-and-run
+            template: ecr-task
+
+    - name: ecr-task
+      container:
+        # 使用从 ECR 拉取的镜像
+        image: <aws_account_id>.dkr.ecr.<region>.amazonaws.com/<repository>:<tag>
+        command: [sh, -c]
+        args: ["echo 'Hello from ECR'; sleep 30"]
+        env:
+          - name: AWS_DEFAULT_REGION
+            value: "<region>"
