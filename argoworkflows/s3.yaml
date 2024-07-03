@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  generateName: s3-data-processing-
+  generateName: s3-transfer-
 spec:
   entrypoint: main
   serviceAccountName: argo-workflows-sa  # 确保这个服务账户具有访问 S3 的权限
@@ -31,7 +31,7 @@ spec:
             path: /tmp/input-file.txt
             s3:
               endpoint: s3.amazonaws.com
-              bucket: your-bucket
+              bucket: input-bucket
               key: input-data/input-file.txt
               accessKeySecret:
                 name: my-s3-credentials
@@ -44,7 +44,7 @@ spec:
         command: [sh]
         source: |
           echo "Fetching data from S3..."
-          aws s3 cp s3://your-bucket/input-data/input-file.txt /tmp/input-file.txt
+          aws s3 cp s3://input-bucket/input-data/input-file.txt /tmp/input-file.txt
 
     - name: process-data
       inputs:
@@ -82,7 +82,7 @@ spec:
             path: /tmp/output-file.txt
             s3:
               endpoint: s3.amazonaws.com
-              bucket: your-bucket
+              bucket: output-bucket
               key: output-data/output-file.txt
               accessKeySecret:
                 name: my-s3-credentials
@@ -95,4 +95,4 @@ spec:
         command: [sh]
         source: |
           echo "Storing data to S3..."
-          aws s3 cp /tmp/output-file.txt s3://your-bucket/output-data/output-file.txt
+          aws s3 cp /tmp/output-file.txt s3://output-bucket/output-data/output-file.txt
