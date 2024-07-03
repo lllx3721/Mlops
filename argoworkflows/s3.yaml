@@ -4,7 +4,7 @@ metadata:
   generateName: s3-transfer-
 spec:
   entrypoint: main
-  serviceAccountName: argo-workflows-sa  # 确保这个服务账户具有访问 S3 的权限
+  serviceAccountName: argo-workflows-sa  # 确保这个服务账户绑定了具有 S3 访问权限的 IAM 角色
   templates:
     - name: main
       steps:
@@ -33,18 +33,10 @@ spec:
               endpoint: s3.amazonaws.com
               bucket: input-bucket
               key: input-data/input-file.txt
-              accessKeySecret:
-                name: my-s3-credentials
-                key: accessKey
-              secretKeySecret:
-                name: my-s3-credentials
-                key: secretKey
-      script:
+      container:
         image: amazon/aws-cli:latest
-        command: [sh]
-        source: |
-          echo "Fetching data from S3..."
-          aws s3 cp s3://input-bucket/input-data/input-file.txt /tmp/input-file.txt
+        command: [sh, -c]
+        args: ["aws s3 cp s3://input-bucket/input-data/input-file.txt /tmp/input-file.txt"]
 
     - name: process-data
       inputs:
@@ -80,19 +72,7 @@ spec:
         artifacts:
           - name: output-data
             path: /tmp/output-file.txt
-            s3:
-              endpoint: s3.amazonaws.com
-              bucket: output-bucket
-              key: output-data/output-file.txt
-              accessKeySecret:
-                name: my-s3-credentials
-                key: accessKey
-              secretKeySecret:
-                name: my-s3-credentials
-                key: secretKey
-      script:
+      container:
         image: amazon/aws-cli:latest
-        command: [sh]
-        source: |
-          echo "Storing data to S3..."
-          aws s3 cp /tmp/output-file.txt s3://output-bucket/output-data/output-file.txt
+        command: [sh, -c]
+        args: ["aws s3 cp /tmp/output-file.txt s3://output-bucket/output-data/output-file.txt"]
