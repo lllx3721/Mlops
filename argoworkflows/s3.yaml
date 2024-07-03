@@ -24,7 +24,6 @@ spec:
                   from: "{{steps.process-data.outputs.artifacts.output-data}}"
 
     - name: fetch-data
-      inputs: []
       outputs:
         artifacts:
           - name: input-data
