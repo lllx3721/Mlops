@@ -105,3 +105,45 @@ result.to_csv('/mnt/data/output-data.csv', index=False)
      ```
 
 通过确保以上配置和检查点，您可以成功执行从 S3 获取数据、处理数据并将结果存储回 S3 的 Argo Workflow。
+
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: s3-artifacts-example-
+spec:
+  entrypoint: main
+  serviceAccountName: argo-workflow-sa
+  templates:
+  - name: main
+    steps:
+    - - name: process-data
+          template: process-data
+
+  - name: process-data
+    inputs:
+      artifacts:
+      - name: input-data
+        path: /mnt/data/input-data.csv
+        s3:
+          endpoint: s3.amazonaws.com
+          bucket: my-input-bucket
+          key: input-data.csv
+    container:
+      image: python:3.8-slim
+      command: [sh, -c]
+      args: [
+        "pip install pandas && "
+        "python -c \""
+        "import pandas as pd; "
+        "data = pd.read_csv('/mnt/data/input-data.csv'); "
+        "result = data.mean(); "
+        "result.to_csv('/mnt/data/output-data.csv', index=False)\""
+      ]
+    outputs:
+      artifacts:
+      - name: output-data
+        path: /mnt/data/output-data.csv
+        s3:
+          endpoint: s3.amazonaws.com
+          bucket: my-output-bucket
+          key: output-data.csv
