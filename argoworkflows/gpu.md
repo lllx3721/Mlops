@@ -1,18 +1,12 @@
-要确保 Argo Workflow 模板正确执行从 S3 下载数据、处理数据并将结果上传回 S3 的任务，您需要确认以下几点：
+了解了你的需求，以下是一个简化的 Argo Workflow 模板，用于从 S3 下载 CSV 文件，进行简单的文本处理，然后将结果上传回 S3。这个模板展示了如何使用 `input.artifacts` 和 `output.artifacts` 来处理 S3 中的数据。
 
-1. **确保正确配置 IRSA**：确保 Argo Workflows 的 Service Account 已正确配置了 IAM 角色，并授予了必要的 S3 访问权限。
-
-2. **确保 `s3` artifact location 配置正确**：确保指定的 S3 存储桶和对象路径正确无误。
-
-以下是一个经过修正和详细解释的 Argo Workflow 模板：
-
-### 修正后的 Argo Workflow 模板
+### 简化的 Argo Workflow 模板
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  generateName: s3-artifacts-example-
+  generateName: simple-s3-example-
 spec:
   entrypoint: main
   serviceAccountName: argo-workflow-sa
@@ -32,15 +26,10 @@ spec:
           bucket: my-input-bucket
           key: input-data.csv
     container:
-      image: python:3.8-slim
-      command: [python, -c]
+      image: alpine:3.7
+      command: [sh, -c]
       args: [
-        "
-import pandas as pd
-data = pd.read_csv('/mnt/data/input-data.csv')
-result = data.mean()
-result.to_csv('/mnt/data/output-data.csv', index=False)
-"
+        "cat /mnt/data/input-data.csv | tr 'a-z' 'A-Z' > /mnt/data/output-data.csv"
       ]
     outputs:
       artifacts:
@@ -54,26 +43,26 @@ result.to_csv('/mnt/data/output-data.csv', index=False)
 
 ### 详细解释
 
-1. **Service Account**：
-   - `serviceAccountName: argo-workflow-sa`：使用配置了 IRSA 的 Service Account，以确保工作流有权限访问 S3 存储。
+1. **工作流配置**：
+   - `generateName: simple-s3-example-`：定义工作流名称前缀。
+   - `serviceAccountName: argo-workflow-sa`：使用已配置的 IRSA 服务账户，以确保工作流有权限访问 S3 存储。
 
 2. **Templates**：
-   - `main`：
-     - 使用 `steps` 定义了单个步骤 `process-data`。
-   - `process-data`：
+   - `main`：工作流的入口模板，定义了一个步骤 `process-data`。
+   - `process-data`：处理数据的模板。
      - **输入 (`inputs`)**：
        - `artifacts`：定义了一个名为 `input-data` 的工件，从 S3 存储中下载数据，并将其保存到容器内的 `/mnt/data/input-data.csv`。
      - **容器 (`container`)**：
-       - `image: python:3.8-slim`：使用 Python 3.8 slim 镜像。
-       - `command` 和 `args`：运行一个 Python 脚本，该脚本读取 CSV 文件，计算每列的平均值，并将结果保存到 `/mnt/data/output-data.csv`。
+       - `image: alpine:3.7`：使用 Alpine Linux 镜像。
+       - `command` 和 `args`：运行一个简单的 `sh` 命令，将 CSV 文件内容转换为大写并保存到输出文件。
      - **输出 (`outputs`)**：
        - `artifacts`：定义了一个名为 `output-data` 的工件，将处理后的数据保存到 S3 存储。
 
-### 常见问题排查
+### 验证和运行工作流
 
-1. **IAM 权限**：
+1. **确保 S3 访问权限**：
    - 确保 Argo Workflows 使用的 IAM 角色具有 `s3:GetObject` 和 `s3:PutObject` 权限。
-   - 可以使用以下策略示例：
+   - 可以使用以下 IAM 策略：
 
      ```json
      {
@@ -94,56 +83,18 @@ result.to_csv('/mnt/data/output-data.csv', index=False)
      }
      ```
 
-2. **S3 存储桶和对象路径**：
-   - 确认 `my-input-bucket` 和 `my-output-bucket` 的名称以及对象路径正确无误。
+2. **提交工作流**：
+   - 使用 `kubectl` 或 Argo CLI 提交工作流：
 
-3. **错误日志**：
-   - 查看 Argo Workflows 执行过程中生成的日志，以识别和解决错误。例如，使用 Argo CLI 查看工作流日志：
+     ```sh
+     kubectl create -f simple-s3-example.yaml
+     ```
+
+3. **检查日志**：
+   - 使用 Argo CLI 查看工作流日志以确保任务执行成功：
 
      ```sh
      argo logs @latest
      ```
 
-通过确保以上配置和检查点，您可以成功执行从 S3 获取数据、处理数据并将结果存储回 S3 的 Argo Workflow。
-
-apiVersion: argoproj.io/v1alpha1
-kind: Workflow
-metadata:
-  generateName: s3-artifacts-example-
-spec:
-  entrypoint: main
-  serviceAccountName: argo-workflow-sa
-  templates:
-  - name: main
-    steps:
-    - - name: process-data
-          template: process-data
-
-  - name: process-data
-    inputs:
-      artifacts:
-      - name: input-data
-        path: /mnt/data/input-data.csv
-        s3:
-          endpoint: s3.amazonaws.com
-          bucket: my-input-bucket
-          key: input-data.csv
-    container:
-      image: python:3.8-slim
-      command: [sh, -c]
-      args: [
-        "pip install pandas && "
-        "python -c \""
-        "import pandas as pd; "
-        "data = pd.read_csv('/mnt/data/input-data.csv'); "
-        "result = data.mean(); "
-        "result.to_csv('/mnt/data/output-data.csv', index=False)\""
-      ]
-    outputs:
-      artifacts:
-      - name: output-data
-        path: /mnt/data/output-data.csv
-        s3:
-          endpoint: s3.amazonaws.com
-          bucket: my-output-bucket
-          key: output-data.csv
+通过这种配置，您可以测试 Argo Workflows 如何从 S3 获取数据、处理数据并将结果存储回 S3。这种方法结合了 Argo Workflows 和 S3 的强大功能，实现了数据处理的自动化和高效管理。
