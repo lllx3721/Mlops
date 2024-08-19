@@ -1,6 +1,7 @@
 - 创建用户池/身份池
 - 找到oidc关联到eks
 - 一个ClusterRoleBindings可以绑定多个service account
+- 
 
 要通过 AWS Cognito、Service Accounts、RBAC 和 OIDC 实现对用户的权限管理，涵盖对 AWS 资源、Kubernetes Pods 和 Argo Workflows 的访问，你需要将这些技术结合使用，并配置它们以协同工作。这涉及到几个不同的系统和配置层面的整合。我会详细解释每个步骤和组件如何协同工作。
 
@@ -52,3 +53,10 @@
 ### 总结
 
 这种集成方案通过使用 AWS Cognito 为用户提供统一的身份认证服务，并通过 OIDC 将这些身份与 Kubernetes 的服务账户以及 IAM 角色联系起来。RBAC 在 Kubernetes 环境中用来细粒度控制资源访问权限，而 IAM 角色则用于管理 AWS 资源的访问权限。这样，你可以实现跨 AWS 和 Kubernetes 平台的统一身份和访问管理。
+
+
+- 拥有cognito，userpools和groups
+- 我希望groups的人都可以登陆argo webui
+- 但是这里的用户只可以访问argo-pj-test下面所有资源和模版，包括create等，查看log等
+- 而该argo-pj-test里等模版可以对应访问groups管理等iam role允许的资源
+  
