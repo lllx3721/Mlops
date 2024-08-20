@@ -1,2 +1,10 @@
-aws ec2 describe-instances --query 'Reservations[*].Instances[*].InstanceId' --output text
-aws ec2 describe-instances --filters "Name=instance-state-name,Values=terminated" --query 'Reservations[*].Instances[*].InstanceId' --output text
+获取已经删除的ec2的信息是可以实现的。
+通过aws cli无法获取已经终止的ec2信息，但是通过cloudtrail可以获取已经终止的ec2的信息。
+下图为例子。你可以得到启动，终止ec2的具体时间，用户等，目前最多可以获取到5月23日的信息，因此调查6，7月的aws资源使用情况没有问题，而费用也是在这两个月激增。
+该方法需要通过sdk进行程序编写提取信息，因此需要一定的时间。
+
+削除されたEC2の情報を取得することは可能です。AWS CLIを使用して終了済みのEC2情報を取得することはできませんが、CloudTrailを使用すれば、終了済みのEC2情報を取得できます。
+
+以下の図はその例です。EC2の起動や終了の具体的な時間、ユーザーなどを取得することができます。現在、5月23日までの情報を取得できるため、6月および7月のAWSリソース使用状況を調査することに問題はありません。また、この2か月間で費用が急増しています。
+
+この方法では、SDKを使用してプログラムを作成し、情報を抽出する必要があるため、一定の時間が必要です。
